@@ -4,6 +4,9 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
+from datetime import *
+
+from database import get_expenses, add_expense
 from keyboards import keyboard_menu, keyboard_category, keyboard_back_to_menu
 
 router = Router()
@@ -42,7 +45,7 @@ async def get_amount(message: Message, state: FSMContext):
         await message.answer("Введите расходы числом!")
         return
 
-    await state.update_data(amount=message.text)
+    await state.update_data(amount=float(message.text))
     await message.answer(text='Выберите категорию', reply_markup=keyboard_category())
 
     await state.set_state(Data.category)
@@ -51,7 +54,7 @@ category_name = {
     "Food": "Еда",
     "Transport": "Транспорт",
     "Entertainment": "Развлечения",
-    "Purchase": "Покупки",
+    "Purchases": "Покупки",
     "Other": "Другое"
 }
 
@@ -75,6 +78,13 @@ async def get_comment(message: Message, state: FSMContext):
 
     user_data = await state.get_data()
 
+    user_id = message.from_user.id
+
+    created_at = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    add_expense(user_id, user_data['amount'], user_data['category'], user_data['comment'], created_at)
+
+
     await message.answer(f"{user_data['amount']}\n"
                         f"{user_data['category']}\n"
                         f"{user_data['comment']}")
@@ -84,7 +94,28 @@ async def get_comment(message: Message, state: FSMContext):
 @router.callback_query(F.data == "history")
 async def history(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.edit_text(text='Здесь будет история расходов 🤓')
+
+    user_id = callback.from_user.id
+    expenses = get_expenses(user_id)
+
+    if not expenses:
+        await callback.message.edit_text("История расходов\n\n"
+                                         "У вас пока нет расходов.")
+
+        return
+
+    text = "История расходов\n\n"
+
+    for expense in expenses:
+        expense_id, user_id, amount, category, comment, created_at = expense
+
+        name = category_name.get(category)
+
+        text += f"{amount} - {name}\n"
+        text += f"{comment}\n"
+        text += f"{created_at}\n"
+
+    await callback.message.edit_text(text)
 
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery):
