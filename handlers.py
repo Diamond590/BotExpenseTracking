@@ -24,12 +24,37 @@ async def start(message: Message):
 @router.callback_query(F.data == "help")
 async def help(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.edit_text(text='Пока что тут пусто)))', reply_markup=keyboard_back_to_menu())
+    await callback.message.edit_text(text='Это бот для подсчётов расходов. Чтобы добавить расходы'
+                                          'вам нужно нажать на кнопку "Добавить расходы".', reply_markup=keyboard_back_to_menu())
 
 @router.callback_query(F.data == "statistic")
 async def statistics(callback: CallbackQuery):
     await callback.answer()
-    await callback.message.edit_text(text='Тут будет статистика ;)')
+
+    user_id = callback.from_user.id
+    expenses = get_expenses(user_id)
+
+    if not expenses:
+        await callback.message.edit_text(text='У вас пока что нет расходов', reply_markup=keyboard_back_to_menu())
+        return
+
+    total = 0
+
+    categories = {}
+
+    for expense in expenses:
+        expense_id, user_id, amount, category, comment, created_at = expense
+        total += amount
+
+        categories[category] = categories.get(category, 0) + amount
+
+    text = (f"Всего: {total}")
+
+    for category, amount in categories.items():
+        name = category_name.get(category, category)
+        text += f"{name}: {amount:.2f}\n"
+
+    await callback.message.edit_text(text=text, reply_markup=keyboard_back_to_menu())
 
 @router.callback_query(F.data == "expense")
 async def start_FSM(callback: CallbackQuery, state: FSMContext):
@@ -87,7 +112,7 @@ async def get_comment(message: Message, state: FSMContext):
 
     await message.answer(f"{user_data['amount']}\n"
                         f"{user_data['category']}\n"
-                        f"{user_data['comment']}")
+                        f"{user_data['comment']}", reply_markup=keyboard_back_to_menu())
 
     await state.clear()
 
@@ -99,8 +124,8 @@ async def history(callback: CallbackQuery):
     expenses = get_expenses(user_id)
 
     if not expenses:
-        await callback.message.edit_text("История расходов\n\n"
-                                         "У вас пока нет расходов.")
+        await callback.message.edit_text(text="История расходов\n\n"
+                                         "У вас пока нет расходов.", reply_markup=keyboard_back_to_menu())
 
         return
 
@@ -115,7 +140,7 @@ async def history(callback: CallbackQuery):
         text += f"{comment}\n"
         text += f"{created_at}\n"
 
-    await callback.message.edit_text(text)
+    await callback.message.edit_text(text=text, reply_markup=keyboard_back_to_menu())
 
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery):
