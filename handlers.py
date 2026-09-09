@@ -112,7 +112,7 @@ async def get_comment(message: Message, state: FSMContext):
     await message.answer(f"✅ Расходы сохранились.\n\n"
                          f"💰Сумма: {user_data['amount']}\n"
                         f"🤓Категория: {user_data['category']}\n"
-                        f"📆Дата: {user_data['comment']}", reply_markup=keyboard_back_to_menu())
+                        f"📆Дата: {created_at}", reply_markup=keyboard_back_to_menu())
 
     await state.clear()
 
